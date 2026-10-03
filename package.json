@@ -1,0 +1,13 @@
+{
+  "name": "doodle-mind",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,client \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "test": "npm --prefix server test",
+    "eval": "node eval/run.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

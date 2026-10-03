@@ -1,5 +1,4 @@
-// Cached responses in the real API shape. Drop supplied images into this folder
-// and set `image` (e.g. import plantCell from './plant-cell.jpg').
+// Cached responses in the real API shape; set `image` once a sample image is added.
 const grade = (answers, keywords) =>
   answers.map((a, i) => {
     const hit = keywords[i].some((k) => a.text.toLowerCase().includes(k));

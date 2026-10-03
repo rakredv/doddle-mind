@@ -1,6 +1,4 @@
-// One-off check of what Gemma 4 supports on the Gemini API.
-// Usage: node scripts/probe.js [path/to/diagram.jpg]
-// Never prints the API key.
+// Checks what Gemma 4 supports on the Gemini API: node scripts/probe.js [image]
 import { readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 import { GoogleGenAI } from '@google/genai';

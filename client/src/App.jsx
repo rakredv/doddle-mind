@@ -38,7 +38,9 @@ export default function App() {
   const set = (patch) => dispatch({ type: 'set', patch });
 
   // Scroll to top whenever the stage changes.
-  useEffect(() => window.scrollTo({ top: 0 }), [s.stage]);
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [s.stage]);
 
   async function runExplain(image = s.image, language = s.language, level = s.level) {
     set({ image, language, level, stage: 'explaining', error: null });

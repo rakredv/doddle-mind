@@ -1,5 +1,4 @@
-// The Gemma 4 integration: every model call in Doodle Mind goes through this file.
-// Gemma 4 is reached through the Gemini API (@google/genai), model id from GEMMA_MODEL.
+// Every Gemma 4 call (via the Gemini API) goes through this file.
 import { GoogleGenAI } from '@google/genai';
 import { config } from './config.js';
 import { AppError } from './errors.js';
@@ -40,8 +39,7 @@ export function createGemma({ ai, model = config.model, backoffMs = 1500 } = {})
             systemInstruction: system,
             responseMimeType: 'application/json',
             temperature: 0.4,
-            // Minimal thinking cuts latency from ~30s to ~10s. It 500'd intermittently on 31b,
-            // so the last retry goes without it.
+            // Minimal thinking cuts latency ~3x; the last retry drops it in case it caused a 500.
             ...(attempt < TRANSIENT_RETRIES && { thinkingConfig: { thinkingLevel: 'MINIMAL' } }),
           },
         });

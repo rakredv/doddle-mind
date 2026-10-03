@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
-  // BACKEND_URL (no VITE_ prefix) is only read here, for the dev proxy; it is not sent to the browser.
+  // BACKEND_URL has no VITE_ prefix, so it stays out of the browser bundle.
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react(), tailwindcss()],

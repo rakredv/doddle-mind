@@ -1,8 +1,9 @@
 export class AppError extends Error {
-  constructor(code, status, message) {
+  constructor(code, status, message, category) {
     super(message);
     this.code = code;
     this.status = status;
+    this.category = category;
   }
 }
 
@@ -17,5 +18,5 @@ export function errorHandler(err, _req, res, _next) {
       e = new AppError('model_error', 500, 'Something went wrong on the server.');
     }
   }
-  res.status(e.status).json({ error: { code: e.code, message: e.message } });
+  res.status(e.status).json({ error: { code: e.code, message: e.message, ...(e.category && { category: e.category }) } });
 }

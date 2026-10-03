@@ -1,13 +1,37 @@
 // Every Gemma 4 call (via the Gemini API) goes through this file.
+import { createHash } from 'node:crypto';
 import { GoogleGenAI } from '@google/genai';
 import { config } from './config.js';
 import { AppError } from './errors.js';
-import { explainSystem, EXPLAIN_USER, checkSystem, checkUser } from './prompts.js';
-import { explainResponse, checkModelResponse, NOT_DIAGRAM } from './schemas.js';
+import {
+  explainSystem, EXPLAIN_USER, checkSystem, checkUser, MODERATION_SYSTEM, MODERATION_USER,
+  flashcardsSystem, flashcardsUser, quizSystem, quizUser,
+} from './prompts.js';
+import {
+  explainResponse, checkModelResponse, flashcardsModelResponse, quizModelResponse, moderationResponse, NOT_DIAGRAM,
+} from './schemas.js';
 
 const TRANSIENT_RETRIES = 2; // for 429/5xx from the API
 const REQUEST_TIMEOUT_MS = 90_000;
+const VERDICT_CACHE_SIZE = 100;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const MODERATION_MESSAGES = {
+  personal: 'This image seems to contain personal information or a photo of a person, so it can not be used. Please upload a diagram only.',
+  confidential: 'This image seems to contain confidential or private documents, so it can not be used. Please upload a diagram only.',
+  sexual: 'This image contains content that is not suitable for a study app. Please upload a diagram only.',
+  offensive: 'This image contains offensive or abusive content, so it can not be used. Please upload a diagram only.',
+  violent: 'This image contains graphic or violent content, so it can not be used. Please upload a diagram only.',
+};
+
+function shuffle(items) {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 // Models sometimes wrap JSON in code fences or prose; take the outermost object.
 export function extractJson(text) {
@@ -28,6 +52,7 @@ function toAppError(e) {
 
 export function createGemma({ ai, model = config.model, backoffMs = 1500 } = {}) {
   const client = ai ?? new GoogleGenAI({ apiKey: config.apiKey, httpOptions: { timeout: REQUEST_TIMEOUT_MS } });
+  const verdicts = new Map(); // image hash -> moderation verdict
 
   async function call({ system, parts }) {
     for (let attempt = 0; ; attempt++) {
@@ -83,12 +108,59 @@ export function createGemma({ ai, model = config.model, backoffMs = 1500 } = {})
   return {
     model,
 
-    explainDiagram({ image, mimeType, language, level }) {
+    // Blocks the image (422 unsafe_image) before it reaches the explain call.
+    async moderateImage({ image, mimeType }) {
+      const key = createHash('sha256').update(image).digest('hex');
+      let verdict = verdicts.get(key);
+      if (!verdict) {
+        verdict = await structured({
+          system: MODERATION_SYSTEM,
+          parts: [{ inlineData: { mimeType, data: image } }, { text: MODERATION_USER }],
+          schema: moderationResponse,
+        });
+        verdicts.set(key, verdict);
+        if (verdicts.size > VERDICT_CACHE_SIZE) verdicts.delete(verdicts.keys().next().value);
+      }
+      if (!verdict.allowed) {
+        const category = verdict.category === 'none' ? 'personal' : verdict.category;
+        throw new AppError('unsafe_image', 422, MODERATION_MESSAGES[category], category);
+      }
+    },
+
+    async explainDiagram({ image, mimeType, language, level }) {
+      await this.moderateImage({ image, mimeType });
       return structured({
         system: explainSystem(language, level),
         parts: [{ inlineData: { mimeType, data: image } }, { text: EXPLAIN_USER }],
         schema: explainResponse,
       });
+    },
+
+    async generateFlashcards({ context, language, level }) {
+      const { cards } = await structured({
+        system: flashcardsSystem(language, level),
+        parts: [{ text: flashcardsUser(context) }],
+        schema: flashcardsModelResponse,
+      });
+      return { cards: cards.map((c, i) => ({ id: `c${i + 1}`, ...c })) };
+    },
+
+    async generateQuiz({ context, language, level }) {
+      const { questions } = await structured({
+        system: quizSystem(language, level),
+        parts: [{ text: quizUser(context) }],
+        schema: quizModelResponse,
+        extraCheck: (d) =>
+          d.questions.some((q) => new Set(q.options.map((o) => o.toLowerCase())).size < 4) ? 'options must be distinct' : null,
+      });
+      // Shuffle here so the correct option is not always in the same slot.
+      return {
+        questions: questions.map((q, i) => {
+          const correct = q.options[q.answerIndex];
+          const options = shuffle(q.options);
+          return { id: `m${i + 1}`, text: q.text, options, answerIndex: options.indexOf(correct), explanation: q.explanation };
+        }),
+      };
     },
 
     async checkAnswers({ context, questions, answers, language }) {

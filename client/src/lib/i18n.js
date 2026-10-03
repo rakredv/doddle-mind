@@ -14,3 +14,10 @@ export const ERROR_MESSAGES = {
   rate_limited: 'Too many requests. Wait a moment and retry.',
   network: "Can't reach the server. You can try a sample instead.",
 };
+export const UNSAFE_TITLES = {
+  personal: 'Personal information detected',
+  confidential: 'Confidential content detected',
+  sexual: 'Inappropriate content',
+  offensive: 'Offensive content',
+  violent: 'Graphic content',
+};

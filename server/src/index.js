@@ -3,7 +3,7 @@ import cors from 'cors';
 import { config } from './config.js';
 import { AppError, errorHandler } from './errors.js';
 import { gemma } from './gemma.js';
-import { explainRequest, checkRequest } from './schemas.js';
+import { explainRequest, checkRequest, studyRequest } from './schemas.js';
 
 export function createApp(getGemma = gemma) {
   const app = express();
@@ -29,6 +29,14 @@ export function createApp(getGemma = gemma) {
   app.post('/api/check', async (req, res) => {
     const input = parse(checkRequest, req.body);
     res.json(await getGemma().checkAnswers(input));
+  });
+
+  app.post('/api/flashcards', async (req, res) => {
+    res.json(await getGemma().generateFlashcards(parse(studyRequest, req.body)));
+  });
+
+  app.post('/api/quiz', async (req, res) => {
+    res.json(await getGemma().generateQuiz(parse(studyRequest, req.body)));
   });
 
   app.use('/api', (_req, _res, next) => next(new AppError('not_found', 404, 'Unknown API route.')));

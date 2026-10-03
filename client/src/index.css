@@ -67,9 +67,23 @@ body {
   background: linear-gradient(90deg, var(--line) 25%, var(--accent-soft) 50%, var(--line) 75%);
   background-size: 200% 100%; animation: shimmer 1.6s infinite; border-radius: 12px;
 }
+.flip { perspective: 1200px; }
+.flip-inner { display: grid; transition: transform .6s cubic-bezier(.2,.7,.2,1); transform-style: preserve-3d; }
+.flip-inner.on { transform: rotateY(180deg); }
+.face {
+  grid-area: 1 / 1; min-height: 280px; padding: 2rem; display: flex; flex-direction: column;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.face-back { transform: rotateY(180deg); }
+
 @media (prefers-reduced-motion: reduce) {
   .rise, .shimmer { animation: none; }
   .btn-primary { transition: none; }
+  .flip-inner, .flip-inner.on { transform: none; transition: none; }
+  .face { transition: opacity .15s; }
+  .face-back { transform: none; opacity: 0; }
+  .flip-inner.on .face-back { opacity: 1; }
+  .flip-inner.on .face-front { opacity: 0; }
 }
 
 @media print {

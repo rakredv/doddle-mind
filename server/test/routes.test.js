@@ -12,7 +12,8 @@ async function withServer(fake, fn) {
   }
 }
 
-const good = { image: 'A'.repeat(200), mimeType: 'image/png', language: 'te', level: 'exam' };
+const jpegHeader = Buffer.from([0xff, 0xd8, 0xff, 0xe0, ...new Array(300).fill(1)]).toString('base64');
+const good = { image: jpegHeader, mimeType: 'image/jpeg', language: 'te', level: 'exam' };
 
 test('explain rejects bad input with the error contract', async () => {
   await withServer({}, async (post) => {
@@ -48,5 +49,33 @@ test('check validates body and maps AppError status', async () => {
     });
     assert.equal(res.status, 429);
     assert.equal((await res.json()).error.code, 'rate_limited');
+  });
+});
+
+test('explain rejects a non-image payload even with an image mimeType', async () => {
+  await withServer({}, async (post) => {
+    const res = await post('/api/explain', { ...good, image: Buffer.from('%PDF-1.7 '.repeat(30)).toString('base64') });
+    assert.equal(res.status, 400);
+    assert.equal((await res.json()).error.code, 'bad_image');
+  });
+});
+
+test('unsafe_image error includes the category', async () => {
+  const { AppError } = await import('../src/errors.js');
+  const fake = { explainDiagram: async () => { throw new AppError('unsafe_image', 422, 'blocked', 'confidential'); } };
+  await withServer(fake, async (post) => {
+    const res = await post('/api/explain', good);
+    assert.equal(res.status, 422);
+    assert.deepEqual((await res.json()).error, { code: 'unsafe_image', message: 'blocked', category: 'confidential' });
+  });
+});
+
+test('flashcards and quiz routes validate and delegate', async () => {
+  const fake = { generateFlashcards: async () => ({ cards: [] }), generateQuiz: async () => ({ questions: [] }) };
+  const body = { context: { title: 'T', parts: [], explanation: 'E' }, language: 'en', level: 'kid' };
+  await withServer(fake, async (post) => {
+    assert.equal((await post('/api/flashcards', body)).status, 200);
+    assert.equal((await post('/api/quiz', body)).status, 200);
+    assert.equal((await post('/api/quiz', { ...body, level: 'x' })).status, 400);
   });
 });

@@ -1,4 +1,4 @@
-export default function RevisionCard({ title, terms, image, onRestart }) {
+export default function RevisionCard({ title, terms, image, onBack, onRestart }) {
   return (
     <section className="rise">
       <div className="print-area card p-8 sm:p-10">
@@ -26,6 +26,7 @@ export default function RevisionCard({ title, terms, image, onRestart }) {
 
       <div className="no-print mt-8 flex flex-wrap gap-3">
         <button onClick={() => window.print()} className="btn-primary text-lg">Print card</button>
+        <button onClick={onBack} className="btn-ghost text-lg">Back to practice</button>
         <button onClick={onRestart} className="btn-ghost text-lg">Try another diagram</button>
       </div>
     </section>

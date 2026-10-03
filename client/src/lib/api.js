@@ -10,7 +10,7 @@ async function post(path, body) {
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const err = data?.error ?? { code: 'model_error', message: 'Request failed' };
-    throw Object.assign(new Error(err.message), { code: err.code });
+    throw Object.assign(new Error(err.message), { code: err.code, category: err.category });
   }
   return data;
 }
@@ -19,18 +19,27 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 const sampleFor = (image) => SAMPLES.find((s) => s.id === image.sampleId);
 
 // Samples carry cached responses so the demo works without the API.
-export async function explain({ image, language, level }) {
-  if (image.sampleId) {
-    await pause(900);
-    return sampleFor(image).explain;
-  }
+async function fromSample(image, pick) {
+  await pause(900);
+  return pick(sampleFor(image));
+}
+
+export function explain({ image, language, level }) {
+  if (image.sampleId) return fromSample(image, (s) => s.explain);
   return post('/api/explain', { image: image.base64, mimeType: image.mimeType, language, level });
 }
 
-export async function check({ image, context, questions, answers, language }) {
-  if (image.sampleId) {
-    await pause(900);
-    return sampleFor(image).check(answers);
-  }
+export function check({ image, context, questions, answers, language }) {
+  if (image.sampleId) return fromSample(image, (s) => s.check(answers));
   return post('/api/check', { context, questions, answers, language });
+}
+
+export function flashcards({ image, context, language, level }) {
+  if (image.sampleId) return fromSample(image, (s) => s.cards);
+  return post('/api/flashcards', { context, language, level });
+}
+
+export function quiz({ image, context, language, level }) {
+  if (image.sampleId) return fromSample(image, (s) => s.mcq);
+  return post('/api/quiz', { context, language, level });
 }

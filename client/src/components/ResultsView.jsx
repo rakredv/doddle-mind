@@ -4,8 +4,7 @@ import VerdictBadge from './VerdictBadge.jsx';
 export default function ResultsView({ questions, answers, review, onNext }) {
   return (
     <section className="rise">
-      <h1 className="headline text-center text-4xl sm:text-5xl">Your results.</h1>
-      <div className="mt-8"><ScoreRing score={review.score} total={questions.length} /></div>
+      <ScoreRing score={review.score} total={questions.length} />
 
       <div className="mt-10 space-y-5">
         {questions.map((q, i) => {
